@@ -1,17 +1,56 @@
 package codeit.elasticsearchjar.docker;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
+import com.github.dockerjava.api.exception.NotFoundException;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.PortBinding;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static java.lang.String.format;
 
 @Slf4j
 public class DockerCommands {
 
-    public static Consumer<DockerClient> pullImage(String image, String tag) {
+    public static Function<DockerClient, CreateContainerResponse> startElasticSearchContainerFromImage() {
+        return dockerClient -> {
+            log.info("Starting ElasticSearch container");
+
+            var hostConfig = HostConfig.newHostConfig()
+                    .withPortBindings(PortBinding.parse("9200:9200")); // TODO read from config
+
+            var container = dockerClient
+                    .createContainerCmd("docker.elastic.co/elasticsearch/elasticsearch:7.5.2")// TODO read from config
+                    .withName("elasticsearch-in-a-jar")
+                    .withHostConfig(hostConfig)
+                    .withEnv("discovery.type=single-node")
+                    .exec();
+
+            dockerClient.startContainerCmd(container.getId()).exec();
+
+            log.info("Done Starting ElasticSearch container");
+
+            return container;
+        };
+    }
+
+    public static Consumer<DockerClient> stopElasticSearchContainer(CreateContainerResponse container) {
+        return dockerClient -> {
+            log.info("Stopping ElasticSearch container");
+
+            dockerClient.stopContainerCmd(container.getId()).exec();
+
+            log.info("Done stopping ElasticSearch container");
+        };
+
+    }
+
+
+        public static Consumer<DockerClient> pullImage(String image, String tag) {
         return (dockerClient) -> {
             try {
                 log.info(format("Started pulling %s:%s", image, tag));
@@ -27,6 +66,18 @@ public class DockerCommands {
                 log.error("Exception while fetching the image: " + image);
                 throw new RuntimeException(e);
             }
+        };
+    }
+
+    public static Consumer<DockerClient> removeContainerWithName(String containerName) {
+        return dockerClient -> {
+            try {
+                dockerClient.inspectContainerCmd(containerName).exec();
+                dockerClient.removeContainerCmd(containerName).exec();
+            } catch (NotFoundException e) {
+                log.info("Container doesn't exist: " + containerName);
+            }
+            log.info("Removed container: " + containerName);
         };
     }
 }
