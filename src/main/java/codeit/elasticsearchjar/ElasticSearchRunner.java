@@ -9,13 +9,13 @@ import static codeit.elasticsearchjar.docker.DockerDaemonConnection.nonThrowingR
 import static codeit.elasticsearchjar.docker.DockerDaemonConnection.runAgainstDaemon;
 
 public class ElasticSearchRunner {
-    public void runElasticSearch() throws IOException {
+    public void runElasticSearch(UserConfiguration userConfiguration) throws IOException {
 
-        runAgainstDaemon(DockerCommands.pullImage("docker.elastic.co/elasticsearch/elasticsearch", "7.5.2")); // TODO read from config
+        runAgainstDaemon(DockerCommands.pullImage("docker.elastic.co/elasticsearch/elasticsearch", userConfiguration.getTag()));
 
         runAgainstDaemon(removeContainerWithName("elasticsearch-in-a-jar"));
 
-        var container = runAgainstDaemon(startElasticSearchContainerFromImage());
+        var container = runAgainstDaemon(startElasticSearchContainerFromImage(userConfiguration));
 
         Runtime
                 .getRuntime()

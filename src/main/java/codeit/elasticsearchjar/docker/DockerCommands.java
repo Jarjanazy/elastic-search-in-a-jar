@@ -1,5 +1,6 @@
 package codeit.elasticsearchjar.docker;
 
+import codeit.elasticsearchjar.UserConfiguration;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
@@ -16,15 +17,15 @@ import static java.lang.String.format;
 @Slf4j
 public class DockerCommands {
 
-    public static Function<DockerClient, CreateContainerResponse> startElasticSearchContainerFromImage() {
+    public static Function<DockerClient, CreateContainerResponse> startElasticSearchContainerFromImage(UserConfiguration userConfiguration) {
         return dockerClient -> {
             log.info("Starting ElasticSearch container");
 
             var hostConfig = HostConfig.newHostConfig()
-                    .withPortBindings(PortBinding.parse("9200:9200")); // TODO read from config
+                    .withPortBindings(PortBinding.parse(format("%s:9200", userConfiguration.getPort())));
 
             var container = dockerClient
-                    .createContainerCmd("docker.elastic.co/elasticsearch/elasticsearch:7.5.2")// TODO read from config
+                    .createContainerCmd(format("docker.elastic.co/elasticsearch/elasticsearch:%s", userConfiguration.getTag()))
                     .withName("elasticsearch-in-a-jar")
                     .withHostConfig(hostConfig)
                     .withEnv("discovery.type=single-node")
